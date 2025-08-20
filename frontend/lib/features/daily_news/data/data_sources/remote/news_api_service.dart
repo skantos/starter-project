@@ -6,7 +6,11 @@ part 'news_api_service.g.dart';
 
 @RestApi(baseUrl:newsAPIBaseURL)
 abstract class NewsApiService {
-  factory NewsApiService(Dio dio) = _NewsApiService;
+  factory NewsApiService(
+    Dio dio, {
+    String? baseUrl,
+    ParseErrorLogger? errorLogger,
+  }) = _NewsApiService;
   
   @GET('/top-headlines')
   Future<HttpResponse<List<ArticleModel>>> getNewsArticles({

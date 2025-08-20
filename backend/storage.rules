@@ -2,6 +2,14 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    //TODO: WRITE ANY NECESSARY STORAGE RULES HERE
+    // Reglas de desarrollo: abiertas solo para la carpeta media/articles
+    match /media/articles/{fileName} {
+      allow read, write: if true;
     }
+
+    // Denegar el resto por defecto
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "905817485380",
+    "project_id": "prueba-flutter-5255e",
+    "storage_bucket": "prueba-flutter-5255e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:905817485380:android:276f3bfff70f2c24680c11",
+        "android_client_info": {
+          "package_name": "com.example.news_app_clean_architecture"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDeWToRsAvumLtmRHDKxTJkaXDUfVU7bzk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
