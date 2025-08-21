@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:news_app_clean_architecture/features/daily_news/presentation/bloc/article/remote/remote_article_bloc.dart';
@@ -22,14 +21,30 @@ class DailyNews extends StatelessWidget {
   _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
       pinned: true,
-      centerTitle: true,
-      title: const Text('Daily News', style: TextStyle(color: Colors.black)),
+      centerTitle: false,
+      backgroundColor: Colors.white,
+      elevation: 1,
+      title: const Text(
+        'Noticias Diarias',
+        style: TextStyle(
+          color: Color(0xFF2D2D2D),
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+          fontFamily: 'Butler',
+        ),
+      ),
       actions: [
         GestureDetector(
           onTap: () => _onShowSavedArticlesViewTapped(context),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            child: Icon(Icons.bookmark_border, color: Colors.black),
+          child: Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F5F7),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.bookmark_border, 
+                color: Color(0xFF2A85FF), size: 22),
           ),
         ),
       ],
@@ -40,12 +55,16 @@ class DailyNews extends StatelessWidget {
     return BlocBuilder<RemoteArticlesBloc, RemoteArticlesState>(
       builder: (context, state) {
         if (state is RemoteArticlesLoading) {
-          return Scaffold(body: const LoadingShimmer());
+          return Scaffold(
+            backgroundColor: const Color(0xFFF8F9FA),
+            body: const LoadingShimmer(),
+          );
         }
         if (state is RemoteArticlesError) {
           return Scaffold(
+            backgroundColor: const Color(0xFFF8F9FA),
             body: ErrorView(
-              onRetry: () => context.read<RemoteArticlesBloc>().add(GetArticles()),
+              onRetry: () => context.read<RemoteArticlesBloc>().add(const GetArticles()),
             ),
           );
         }
@@ -53,6 +72,7 @@ class DailyNews extends StatelessWidget {
           final list = state.articles ?? [];
           if (list.isEmpty) {
             return Scaffold(
+              backgroundColor: const Color(0xFFF8F9FA),
               body: EmptyView(
                 title: 'Aún no hay artículos',
                 actionLabel: 'Publicar artículo',
@@ -60,13 +80,15 @@ class DailyNews extends StatelessWidget {
               ),
               floatingActionButton: FloatingActionButton(
                 onPressed: () => Navigator.pushNamed(context, '/createArticle'),
-                child: const Icon(Icons.add),
+                backgroundColor: const Color(0xFF2A85FF),
+                child: const Icon(Icons.add, color: Colors.white),
               ),
             );
           }
           return _buildArticlesPage(context, list);
         }
         return Scaffold(
+          backgroundColor: const Color(0xFFF8F9FA),
           body: EmptyView(
             title: 'Aún no hay artículos',
             actionLabel: 'Publicar artículo',
@@ -74,41 +96,45 @@ class DailyNews extends StatelessWidget {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () => Navigator.pushNamed(context, '/createArticle'),
-            child: const Icon(Icons.add),
+            backgroundColor: const Color(0xFF2A85FF),
+            child: const Icon(Icons.add, color: Colors.white),
           ),
         );
       },
     );
   }
 
-  Widget _buildArticlesPage(
-      BuildContext context, List<ArticleEntity> articles) {
-    List<Widget> articleWidgets = [];
-    for (var article in articles) {
-      articleWidgets.add(ArticleWidget(
-        article: article,
-        onArticlePressed: (article) => _onArticlePressed(context, article),
-      ));
-    }
-
+  Widget _buildArticlesPage(BuildContext context, List<ArticleEntity> articles) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
           _buildSliverAppBar(context),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             sliver: SliverList(
-              delegate: SliverChildListDelegate(articleWidgets),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final article = articles[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: ArticleWidget(
+                      article: article,
+                      onArticlePressed: (article) => _onArticlePressed(context, article),
+                    ),
+                  );
+                },
+                childCount: articles.length,
+              ),
             ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/createArticle');
-        },
-        child: const Icon(Icons.add),
+        onPressed: () => Navigator.pushNamed(context, '/createArticle'),
+        backgroundColor: const Color(0xFF2A85FF),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

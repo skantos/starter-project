@@ -10,9 +10,8 @@ import 'package:news_app_clean_architecture/features/daily_news/domain/repositor
 import '../data_sources/remote/news_api_service.dart';
 
 class ArticleRepositoryImpl implements ArticleRepository {
-  final NewsApiService _newsApiService;
   final AppDatabase _appDatabase;
-  ArticleRepositoryImpl(this._newsApiService,this._appDatabase);
+  ArticleRepositoryImpl(this._appDatabase);
   
   @override
   Future<DataState<List<ArticleModel>>> getNewsArticles() async {
