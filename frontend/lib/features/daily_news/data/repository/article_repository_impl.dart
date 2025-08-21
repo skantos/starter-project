@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:dio/dio.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:news_app_clean_architecture/core/constants/constants.dart';
 import 'package:news_app_clean_architecture/features/daily_news/data/data_sources/local/app_database.dart';
 import 'package:news_app_clean_architecture/features/daily_news/data/models/article.dart';
@@ -18,26 +17,39 @@ class ArticleRepositoryImpl implements ArticleRepository {
   @override
   Future<DataState<List<ArticleModel>>> getNewsArticles() async {
    try {
-    final httpResponse = await _newsApiService.getNewsArticles(
-      apiKey:newsAPIKey,
-      country:countryQuery,
-      category:categoryQuery,
-    );
+    final query = await FirebaseFirestore.instance
+        .collection('articles')
+        .orderBy('createdAt', descending: true)
+        .get();
 
-    if (httpResponse.response.statusCode == HttpStatus.ok) {
-      return DataSuccess(httpResponse.data);
-    } else {
-      return DataFailed(
-        DioException(
-          error: httpResponse.response.statusMessage,
-          response: httpResponse.response,
-          type: DioExceptionType.badResponse,
-          requestOptions: httpResponse.response.requestOptions,
-        )
+    final List<ArticleModel> list = query.docs.map((doc) {
+      final data = doc.data();
+      final thumb = (data['thumbnailURL'] ?? '') as String;
+      final content = (data['content'] ?? '') as String;
+      final title = (data['title'] ?? '') as String;
+      final ts = data['publishedAt'];
+      String publishedAt = '';
+      if (ts is Timestamp) {
+        publishedAt = ts.toDate().toIso8601String();
+      } else if (ts != null) {
+        publishedAt = ts.toString();
+      }
+      return ArticleModel(
+        author: '',
+        title: title,
+        description: content,
+        url: '',
+        urlToImage: thumb.isNotEmpty ? thumb : kDefaultImage,
+        publishedAt: publishedAt,
+        content: content,
       );
-    }
-   } on DioException catch(e){
-    return DataFailed(e);
+    }).toList();
+
+    return DataSuccess(list);
+   } catch (e) {
+    return DataFailed(
+      DioException(requestOptions: RequestOptions(path: '/firestore'), error: e),
+    );
    }
   }
 

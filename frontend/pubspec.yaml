@@ -47,6 +47,7 @@ dependencies:
   #chached image 
   cached_network_image: ^3.2.0
   typed_data: ^1.4.0
+  image_picker: ^1.0.7
   path_provider: ^2.1.5
 
 dev_dependencies:
