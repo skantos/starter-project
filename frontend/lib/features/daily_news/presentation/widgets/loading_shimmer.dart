@@ -5,11 +5,13 @@ class LoadingShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemBuilder: (_, __) => _ShimmerCard(),
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemCount: 6,
+    return Column(
+      children: List.generate(6, (index) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: _ShimmerCard(),
+        );
+      }),
     );
   }
 }

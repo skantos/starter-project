@@ -2,14 +2,24 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Reglas de desarrollo: abiertas solo para la carpeta media/articles
+    // Lectura pública de imágenes de artículos
     match /media/articles/{fileName} {
-      allow read, write: if true;
+      allow read: if true;
+
+      // Escritura solo autenticados y con nombres válidos de imagen
+      allow write: if request.auth != null && isValidImage(fileName);
     }
 
     // Denegar el resto por defecto
     match /{allPaths=**} {
       allow read, write: if false;
+    }
+
+    function isValidImage(name) {
+      // Permitir formatos comunes de imagen: jpg/jpeg/png
+      return name.matches('^[A-Za-z0-9_-]+\\.(jpg|jpeg|png)$')
+        && request.resource.size < 10 * 1024 * 1024 // < 10MB
+        && request.resource.contentType.matches('image/.*');
     }
   }
 }

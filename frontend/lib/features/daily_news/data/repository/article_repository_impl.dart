@@ -1,17 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:news_app_clean_architecture/core/constants/constants.dart';
-import 'package:news_app_clean_architecture/features/daily_news/data/data_sources/local/app_database.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:news_app_clean_architecture/features/daily_news/data/models/article.dart';
 import 'package:news_app_clean_architecture/core/resources/data_state.dart';
 import 'package:news_app_clean_architecture/features/daily_news/domain/entities/article.dart';
 import 'package:news_app_clean_architecture/features/daily_news/domain/repository/article_repository.dart';
 
-import '../data_sources/remote/news_api_service.dart';
 
 class ArticleRepositoryImpl implements ArticleRepository {
-  final AppDatabase _appDatabase;
-  ArticleRepositoryImpl(this._appDatabase);
+  ArticleRepositoryImpl();
   
   @override
   Future<DataState<List<ArticleModel>>> getNewsArticles() async {
@@ -21,11 +20,29 @@ class ArticleRepositoryImpl implements ArticleRepository {
         .orderBy('createdAt', descending: true)
         .get();
 
-    final List<ArticleModel> list = query.docs.map((doc) {
+    final List<ArticleModel> list = await Future.wait(query.docs.map((doc) async {
       final data = doc.data();
-      final thumb = (data['thumbnailURL'] ?? '') as String;
+      final thumbStored = (data['thumbnailURL'] ?? '') as String;
+      String thumbUrl = '';
+      if (thumbStored.isNotEmpty) {
+        try {
+          if (thumbStored.startsWith('http')) {
+            thumbUrl = thumbStored;
+          } else if (thumbStored.startsWith('gs://')) {
+            thumbUrl = await FirebaseStorage.instance.refFromURL(thumbStored).getDownloadURL();
+          } else {
+            thumbUrl = await FirebaseStorage.instance.ref().child(thumbStored).getDownloadURL();
+          }
+        } catch (_) {
+          thumbUrl = kDefaultImage;
+        }
+      }
       final content = (data['content'] ?? '') as String;
+      final category = (data['category'] ?? '') as String;
       final title = (data['title'] ?? '') as String;
+      final description = (data['description'] ?? content) as String;
+      final author = (data['author'] ?? 'Anonymous') as String;
+      final authorId = (data['authorId'] ?? '') as String;
       final ts = data['publishedAt'];
       String publishedAt = '';
       if (ts is Timestamp) {
@@ -34,15 +51,17 @@ class ArticleRepositoryImpl implements ArticleRepository {
         publishedAt = ts.toString();
       }
       return ArticleModel(
-        author: '',
+        author: author,
+        authorId: authorId,
         title: title,
-        description: content,
-        url: '',
-        urlToImage: thumb.isNotEmpty ? thumb : kDefaultImage,
+        description: description,
+        url: doc.id,
+        urlToImage: thumbUrl.isNotEmpty ? thumbUrl : kDefaultImage,
         publishedAt: publishedAt,
         content: content,
+        category: category,
       );
-    }).toList();
+    }).toList());
 
     return DataSuccess(list);
    } catch (e) {
@@ -54,17 +73,88 @@ class ArticleRepositoryImpl implements ArticleRepository {
 
   @override
   Future<List<ArticleModel>> getSavedArticles() async {
-    return _appDatabase.articleDAO.getArticles();
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return [];
+      final query = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('favorites')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final List<ArticleModel> list = await Future.wait(query.docs.map((doc) async {
+        final data = doc.data();
+        final thumbStored = (data['thumbnailURL'] ?? '') as String;
+        String thumbUrl = '';
+        if (thumbStored.isNotEmpty) {
+          try {
+            if (thumbStored.startsWith('http')) {
+              thumbUrl = thumbStored;
+            } else if (thumbStored.startsWith('gs://')) {
+              thumbUrl = await FirebaseStorage.instance.refFromURL(thumbStored).getDownloadURL();
+            } else {
+              thumbUrl = await FirebaseStorage.instance.ref().child(thumbStored).getDownloadURL();
+            }
+          } catch (_) {
+            thumbUrl = kDefaultImage;
+          }
+        }
+        return ArticleModel(
+          author: (data['author'] ?? '') as String,
+          authorId: (data['authorId'] ?? '') as String,
+          title: (data['title'] ?? '') as String,
+          description: (data['description'] ?? data['content'] ?? '') as String,
+          url: (data['url'] ?? doc.id) as String,
+          urlToImage: thumbUrl.isNotEmpty ? thumbUrl : kDefaultImage,
+          publishedAt: (data['publishedAt']?.toString() ?? ''),
+          content: (data['content'] ?? '') as String,
+          category: (data['category'] ?? '') as String,
+        );
+      }).toList());
+
+      return list;
+    } catch (_) {
+      return [];
+    }
   }
 
   @override
-  Future<void> removeArticle(ArticleEntity article) {
-    return _appDatabase.articleDAO.deleteArticle(ArticleModel.fromEntity(article));
+  Future<void> removeArticle(ArticleEntity article) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final String id = (article.url ?? article.title ?? DateTime.now().millisecondsSinceEpoch.toString());
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('favorites')
+        .doc(id)
+        .delete();
   }
 
   @override
-  Future<void> saveArticle(ArticleEntity article) {
-    return _appDatabase.articleDAO.insertArticle(ArticleModel.fromEntity(article));
+  Future<void> saveArticle(ArticleEntity article) async {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final String id = (article.url ?? article.title ?? DateTime.now().millisecondsSinceEpoch.toString());
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('favorites')
+        .doc(id)
+        .set({
+      'author': article.author ?? '',
+      'authorId': article.authorId ?? '',
+      'title': article.title ?? '',
+      'description': article.description ?? '',
+      'content': article.content ?? '',
+      'category': article.category ?? '',
+      'url': article.url ?? id,
+      'urlToImage': article.urlToImage ?? kDefaultImage,
+      'thumbnailURL': article.urlToImage ?? kDefaultImage,
+      'publishedAt': article.publishedAt ?? '',
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
   
 }

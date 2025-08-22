@@ -4,6 +4,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:ionicons/ionicons.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../../injection_container.dart';
 import '../../../domain/entities/article.dart';
 import '../../bloc/article/local/local_article_bloc.dart';
@@ -244,12 +245,37 @@ class ArticleDetailsView extends HookWidget {
   }
 
   Widget _buildFloatingActionButton() {
-    return Builder(
-      builder: (context) => FloatingActionButton(
-        onPressed: () => _onFloatingActionButtonPressed(context),
-        backgroundColor: const Color(0xFF2A85FF),
-        child: const Icon(Ionicons.bookmark, color: Colors.white, size: 22),
-      ),
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        final bool loggedIn = snapshot.data != null;
+        if (!loggedIn) {
+          return FloatingActionButton(
+            onPressed: () => _onFloatingActionButtonPressed(context, false),
+            backgroundColor: const Color(0xFF2A85FF),
+            child: const Icon(Ionicons.bookmark_outline, color: Colors.white, size: 22),
+          );
+        }
+        final String id = article!.url ?? article!.title ?? '';
+        final User user = FirebaseAuth.instance.currentUser!;
+        final docStream = FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('favorites')
+            .doc(id)
+            .snapshots();
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: docStream,
+          builder: (context, favSnap) {
+            final bool isFav = favSnap.data?.exists == true;
+            return FloatingActionButton(
+              onPressed: () => _onFloatingActionButtonPressed(context, true),
+              backgroundColor: const Color(0xFF2A85FF),
+              child: Icon(isFav ? Ionicons.bookmark : Ionicons.bookmark_outline, color: Colors.white, size: 22),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -257,17 +283,41 @@ class ArticleDetailsView extends HookWidget {
     Navigator.pop(context);
   }
 
-  void _onFloatingActionButtonPressed(BuildContext context) {
-    BlocProvider.of<LocalArticleBloc>(context).add(SaveArticle(article!));
+  Future<void> _onFloatingActionButtonPressed(BuildContext context, bool loggedIn) async {
+    if (!loggedIn) {
+      Navigator.pushNamed(context, '/login');
+      return;
+    }
+    // Toggle: si existe en favoritos, eliminar; si no, guardar
+    try {
+      final String id = article!.url ?? article!.title ?? '';
+      if (id.isEmpty) return;
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+      final ref = FirebaseFirestore.instance.collection('users').doc(user.uid).collection('favorites').doc(id);
+      final snap = await ref.get();
+      if (snap.exists) {
+        BlocProvider.of<LocalArticleBloc>(context).add(RemoveArticle(article!));
+        _showSnack(context, 'Artículo quitado de favoritos');
+      } else {
+        BlocProvider.of<LocalArticleBloc>(context).add(SaveArticle(article!));
+        _showSnack(context, 'Artículo guardado en favoritos');
+      }
+    } catch (e) {
+      _showSnack(context, 'Error al actualizar favoritos: $e');
+    }
+  }
+
+  void _showSnack(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: const Color(0xFF2A85FF),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        content: const Text(
-          'Artículo guardado en favoritos',
-          style: TextStyle(fontWeight: FontWeight.w500),
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.w500),
         ),
       ),
     );
