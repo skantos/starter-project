@@ -6,9 +6,15 @@ abstract class ArticleRepository {
   Future<DataState<List<ArticleEntity>>> getNewsArticles();
 
   // Database methods
-  Future < List < ArticleEntity >> getSavedArticles();
+  Future<DataState<List<ArticleEntity>>> getSavedArticles();
 
-  Future < void > saveArticle(ArticleEntity article);
+  Future<DataState<void>> saveArticle(ArticleEntity article);
 
-  Future < void > removeArticle(ArticleEntity article);
+  Future<DataState<void>> removeArticle(ArticleEntity article);
+
+  // Favorites helpers
+  Future<DataState<bool>> isArticleSaved(String articleId);
+  Future<DataState<int>> getFavoritesCount({String? userId});
+  Future<DataState<List<ArticleEntity>>> getArticlesByAuthor(String authorId);
+  Future<DataState<void>> deleteArticleById(String id);
 }

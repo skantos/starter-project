@@ -72,10 +72,10 @@ class ArticleRepositoryImpl implements ArticleRepository {
   }
 
   @override
-  Future<List<ArticleModel>> getSavedArticles() async {
+  Future<DataState<List<ArticleModel>>> getSavedArticles() async {
     try {
       final User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) return [];
+      if (user == null) return DataSuccess(const <ArticleModel>[]);
       final query = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -113,48 +113,151 @@ class ArticleRepositoryImpl implements ArticleRepository {
         );
       }).toList());
 
-      return list;
-    } catch (_) {
-      return [];
+      return DataSuccess(list);
+    } catch (e) {
+      return DataFailed(DioException(requestOptions: RequestOptions(path: '/firestore/favorites'), error: e));
     }
   }
 
   @override
-  Future<void> removeArticle(ArticleEntity article) async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    final String id = (article.url ?? article.title ?? DateTime.now().millisecondsSinceEpoch.toString());
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('favorites')
-        .doc(id)
-        .delete();
+  Future<DataState<void>> removeArticle(ArticleEntity article) async {
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return const DataSuccess(null);
+      final String id = (article.url ?? article.title ?? DateTime.now().millisecondsSinceEpoch.toString());
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('favorites')
+          .doc(id)
+          .delete();
+      return const DataSuccess(null);
+    } catch (e) {
+      return DataFailed(DioException(requestOptions: RequestOptions(path: '/firestore/favorites/remove'), error: e));
+    }
   }
 
   @override
-  Future<void> saveArticle(ArticleEntity article) async {
-    final User? user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    final String id = (article.url ?? article.title ?? DateTime.now().millisecondsSinceEpoch.toString());
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('favorites')
-        .doc(id)
-        .set({
-      'author': article.author ?? '',
-      'authorId': article.authorId ?? '',
-      'title': article.title ?? '',
-      'description': article.description ?? '',
-      'content': article.content ?? '',
-      'category': article.category ?? '',
-      'url': article.url ?? id,
-      'urlToImage': article.urlToImage ?? kDefaultImage,
-      'thumbnailURL': article.urlToImage ?? kDefaultImage,
-      'publishedAt': article.publishedAt ?? '',
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+  Future<DataState<void>> saveArticle(ArticleEntity article) async {
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return const DataSuccess(null);
+      final String id = (article.url ?? article.title ?? DateTime.now().millisecondsSinceEpoch.toString());
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('favorites')
+          .doc(id)
+          .set({
+        'author': article.author ?? '',
+        'authorId': article.authorId ?? '',
+        'title': article.title ?? '',
+        'description': article.description ?? '',
+        'content': article.content ?? '',
+        'category': article.category ?? '',
+        'url': article.url ?? id,
+        'urlToImage': article.urlToImage ?? kDefaultImage,
+        'thumbnailURL': article.urlToImage ?? kDefaultImage,
+        'publishedAt': article.publishedAt ?? '',
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return const DataSuccess(null);
+    } catch (e) {
+      return DataFailed(DioException(requestOptions: RequestOptions(path: '/firestore/favorites/save'), error: e));
+    }
+  }
+
+  @override
+  Future<DataState<bool>> isArticleSaved(String articleId) async {
+    try {
+      final User? user = FirebaseAuth.instance.currentUser;
+      if (user == null || articleId.isEmpty) return const DataSuccess(false);
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('favorites')
+          .doc(articleId)
+          .get();
+      return DataSuccess(doc.exists);
+    } catch (e) {
+      return DataFailed(DioException(requestOptions: RequestOptions(path: '/firestore/favorites/isSaved'), error: e));
+    }
+  }
+
+  @override
+  Future<DataState<int>> getFavoritesCount({String? userId}) async {
+    try {
+      final String? uid = userId ?? FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return const DataSuccess(0);
+      final agg = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('favorites')
+          .count()
+          .get();
+      return DataSuccess(agg.count ?? 0);
+    } catch (e) {
+      return DataFailed(DioException(requestOptions: RequestOptions(path: '/firestore/favorites/count'), error: e));
+    }
+  }
+
+  @override
+  Future<DataState<List<ArticleEntity>>> getArticlesByAuthor(String authorId) async {
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('articles')
+          .where('authorId', isEqualTo: authorId)
+          .get();
+      final List<ArticleEntity> list = await Future.wait(query.docs.map((doc) async {
+        final data = doc.data();
+        final String stored = (data['thumbnailURL'] ?? '') as String;
+        String thumbUrl = '';
+        if (stored.isNotEmpty) {
+          try {
+            if (stored.startsWith('http')) {
+              thumbUrl = stored;
+            } else if (stored.startsWith('gs://')) {
+              thumbUrl = await FirebaseStorage.instance.refFromURL(stored).getDownloadURL();
+            } else {
+              thumbUrl = await FirebaseStorage.instance.ref().child(stored).getDownloadURL();
+            }
+          } catch (_) {
+            thumbUrl = kDefaultImage;
+          }
+        }
+        final ts = data['publishedAt'];
+        String publishedAt = '';
+        if (ts is Timestamp) {
+          publishedAt = ts.toDate().toIso8601String();
+        } else if (ts != null) {
+          publishedAt = ts.toString();
+        }
+        return ArticleModel(
+          author: (data['author'] ?? '') as String,
+          authorId: (data['authorId'] ?? '') as String,
+          title: (data['title'] ?? '') as String,
+          description: (data['content'] ?? '') as String,
+          url: doc.id,
+          urlToImage: thumbUrl.isNotEmpty ? thumbUrl : kDefaultImage,
+          publishedAt: publishedAt,
+          content: (data['content'] ?? '') as String,
+          category: (data['category'] ?? '') as String,
+        );
+      }).toList());
+      return DataSuccess(list);
+    } catch (e) {
+      return DataFailed(DioException(requestOptions: RequestOptions(path: '/firestore/articles/byAuthor'), error: e));
+    }
+  }
+
+  Future<DataState<void>> deleteArticleById(String id) async {
+    try {
+      if (id.isEmpty) return const DataSuccess(null);
+      await FirebaseFirestore.instance.collection('articles').doc(id).delete();
+      return const DataSuccess(null);
+    } catch (e) {
+      return DataFailed(DioException(requestOptions: RequestOptions(path: '/firestore/articles/delete'), error: e));
+    }
   }
   
 }

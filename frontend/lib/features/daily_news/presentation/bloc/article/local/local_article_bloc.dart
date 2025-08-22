@@ -23,21 +23,21 @@ class LocalArticleBloc extends Bloc<LocalArticlesEvent,LocalArticlesState> {
 
 
   void onGetSavedArticles(GetSavedArticles event,Emitter<LocalArticlesState> emit) async {
-    final articles = await _getSavedArticleUseCase();
-    emit(LocalArticlesDone(articles));
+    final result = await _getSavedArticleUseCase();
+    emit(LocalArticlesDone(result.data ?? const []));
   }
   
   void onRemoveArticle(RemoveArticle removeArticle,Emitter<LocalArticlesState> emit) async {
     await _removeArticleUseCase(params: removeArticle.article);
-    final articles = await _getSavedArticleUseCase();
-    emit(LocalArticlesDone(articles));
+    final result = await _getSavedArticleUseCase();
+    emit(LocalArticlesDone(result.data ?? const []));
   }
 
   void onSaveArticle(SaveArticle saveArticle,Emitter<LocalArticlesState> emit) async {
     try {
       await _saveArticleUseCase(params: saveArticle.article);
     } catch (_) {}
-    final articles = await _getSavedArticleUseCase();
-    emit(LocalArticlesDone(articles));
+    final result = await _getSavedArticleUseCase();
+    emit(LocalArticlesDone(result.data ?? const []));
   }
 }
