@@ -31,12 +31,12 @@ class _DailyNewsState extends State<DailyNews> {
   }
 
   _buildSliverAppBar(BuildContext context) {
-    return SliverAppBar(
+    return const SliverAppBar(
       pinned: true,
       centerTitle: false,
       backgroundColor: Colors.white,
       elevation: 1,
-      title: const Text(
+      title: Text(
         'Noticias Diarias',
         style: TextStyle(
           color: Color(0xFF2D2D2D),
@@ -190,7 +190,7 @@ class _DailyNewsState extends State<DailyNews> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4)),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 4)),
             ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -198,7 +198,7 @@ class _DailyNewsState extends State<DailyNews> {
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
                 child: Icon(icon, color: color, size: 18),
               ),
               const SizedBox(width: 10),
@@ -425,14 +425,14 @@ class _DailyNewsState extends State<DailyNews> {
           color: _primaryBlue,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 4)),
           ],
           border: Border.all(color: _primaryBlue),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person, size: 14, color: Colors.white),
+            const Icon(Icons.person, size: 14, color: Colors.white),
             const SizedBox(width: 6),
             Text(
               text,
@@ -459,7 +459,7 @@ class _DailyNewsState extends State<DailyNews> {
             color: _primaryBlue,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 6)),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 10, offset: const Offset(0, 6)),
             ],
           ),
           child: Icon(icon, color: Colors.white),
