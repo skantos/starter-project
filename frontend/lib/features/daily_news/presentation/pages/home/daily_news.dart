@@ -382,12 +382,18 @@ class _DailyNewsState extends State<DailyNews> {
                 _menuSquare(right: 8, bottom: 76, icon: Icons.bookmark_border, onTap: () async {
                   setState(() => _isMenuOpen = false);
                   await Navigator.pushNamed(context, '/SavedArticles');
-                  if (mounted) _loadMetrics();
+                  if (mounted) {
+                    _loadMetrics();
+                    context.read<RemoteArticlesBloc>().add(const GetArticles());
+                  }
                 }),
                 _menuSquare(right: 8, bottom: 136, icon: Icons.person_outline, onTap: () async {
                   setState(() => _isMenuOpen = false);
                   await Navigator.pushNamed(context, '/profile');
-                  if (mounted) _loadMetrics();
+                  if (mounted) {
+                    _loadMetrics();
+                    context.read<RemoteArticlesBloc>().add(const GetArticles());
+                  }
                 }),
                 _menuSquare(right: 8, bottom: 196, icon: Icons.add, onTap: () {
                   setState(() => _isMenuOpen = false);
